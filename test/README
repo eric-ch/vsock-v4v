@@ -1,0 +1,26 @@
+A collection of tests for the vsock module from userland (and aimed at
+stressing the v4v_transport implementation).
+
+Test binaries may share headers in common/include to avoid code duplication and
+ease test writing.
+
+sockops will ease testing usual socket behaviour through cli. It provides a
+trivial logic to add commands in order to test standard socket operations.
+
+Usage: sockops <command> [...]
+Commands:
+help    Display help.
+
+socket      <stream|dgram>      Create a V4V socket of given type.
+sendto      <addr> <port> <msg> Send a datagram message to the given address:port pair.
+recvfrom    <port>              Read and block until a datagram message is received on the given port. The receive message is printed back on stdout.
+
+spam should make stressing the implementation easier by sending datagrams in
+threads to n-n endpoints.
+
+Usage: spam <command> [...]
+Commands:
+help    Display help.
+recvfrom        <n> <port>              From <port> to <port> + n-1, wait for datagram to be received, then print the payload on stdout.
+sendto  <id> <n> <port> From <port> to <port> + n-1, >
+

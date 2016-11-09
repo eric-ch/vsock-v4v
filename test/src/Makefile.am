@@ -1,0 +1,1 @@
+SUBDIRS = socket-ops spam
