@@ -9,11 +9,12 @@ struct spam_cmds {
 static int spam_usage(int argc, char *argv[]);
 static int spam_sendto(int argc, char *argv[]);
 static int spam_recvfrom(int argc, char *argv[]);
+static int spam_sendto_one(int argc, char *argv[]);
 
 struct spam_cmds cmds[] = {
     { spam_usage,       "help",     "Display help." },
     { spam_recvfrom,    "recvfrom", "<n> <port>		From <port> to <port> + n-1, wait for datagram to be received, then print the payload on stdout." },
-    { spam_sendto,      "sendto",   "<id> <n> <port>	From <port> to <port> + n-1, >" },
+    { spam_sendto,      "sendto",   "<id> <n> <port>	Open n threads, one for each port, from <port> to <port>+n-1 and keep sending random things ton domain <id> on each port." },
 };
 
 static int spam_usage(int argc, char *argv[])
