@@ -1,0 +1,3 @@
+obj-m += vsock_v4v_transport.o
+vsock_v4v_transport-y += v4v_transport.o v4v_ring.o
+

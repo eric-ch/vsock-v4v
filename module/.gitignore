@@ -1,0 +1,10 @@
+*.ko
+*.ko.cmd
+Makefile
+*.mod.o
+*.mod.c
+modules.order
+Module.symvers
+*.o
+*.o.cmd
+.tmp_versions
