@@ -15,6 +15,7 @@ struct spam_cmds cmds[] = {
     { spam_usage,       "help",     "Display help." },
     { spam_recvfrom,    "recvfrom", "<n> <port>		From <port> to <port> + n-1, wait for datagram to be received, then print the payload on stdout." },
     { spam_sendto,      "sendto",   "<id> <n> <port>	Open n threads, one for each port, from <port> to <port>+n-1 and keep sending random things ton domain <id> on each port." },
+    { spam_sendto_one,  "sendto1",  "<id> <n> <port>	Open <n> threads and keep sending random things to domain <id> on <port>." },
 };
 
 static int spam_usage(int argc, char *argv[])
@@ -188,11 +189,73 @@ static int spam_sendto(int argc, char *argv[])
     }
 
     /* Start all. */
-    INF("Starting %zu writer-threads to dom%lu port %lu to %lu.", len, domid, first_port, first_port + len - 1);
+    INF("Starting %zu writer-threads to dom%lu port %lu to %lu.",
+        len, domid, first_port, first_port + len - 1);
     for (i = 0; i < len; ++i) {
         tis[i].sa.svm_family = AF_VSOCK;
         tis[i].sa.svm_cid = domid;
         tis[i].sa.svm_port = first_port + i;
+        if (pthread_create(&tis[i].id, &attr, &__spam_sendto, &tis[i])) {
+            rc = -errno;
+            perror("pthread_create");
+            kill(getpid(), SIGINT); // Break blocking calls.
+            break;
+        }
+    }
+    /* Unwind and join all. */
+    for (--i; i != ~0UL; --i)
+        if (pthread_join(tis[i].id, &ret)) {
+            rc = -errno;
+            perror("pthread_join");
+        }
+
+    free(tis);
+out:
+    pthread_attr_destroy(&attr);
+    return rc;
+}
+
+static int spam_sendto_one(int argc, char *argv[])
+{
+    struct thread_info *tis;
+    pthread_attr_t attr;
+    void *ret;
+    size_t i, len;
+    unsigned long domid, port;
+    int rc = 0;
+
+    if (argc != 5)
+        return -EINVAL;
+    if (parse_ul(argv[2], &domid))
+        return -EINVAL;
+    if (parse_ul(argv[3], &len))
+        return -EINVAL;
+    if (parse_ul(argv[4], &port))
+        return -EINVAL;
+
+    /* Gracefuly quit when signaled. */
+    rc = signals_setup();
+    if (rc < 0)
+        return -rc;
+
+    if (pthread_attr_init(&attr)) {
+        perror("pthread_attr_init");
+        return -errno;
+    }
+
+    tis = calloc(len, sizeof (tis[0]));
+    if (!tis) {
+        rc = -errno;
+        perror("calloc");
+        goto out;
+    }
+
+    /* Start all. */
+    INF("Starting %zu writer-threads to dom%lu port %lu.", len, domid, port);
+    for (i = 0; i < len; ++i) {
+        tis[i].sa.svm_family = AF_VSOCK;
+        tis[i].sa.svm_cid = domid;
+        tis[i].sa.svm_port = port;
         if (pthread_create(&tis[i].id, &attr, &__spam_sendto, &tis[i])) {
             rc = -errno;
             perror("pthread_create");
@@ -294,7 +357,8 @@ static int spam_recvfrom(int argc, char *argv[])
     }
 
     /* Start all. */
-    INF("Starting %zu reader-threads from port %lu to %lu.", len, first_port, first_port + len - 1);
+    INF("Starting %zu reader-threads from port %lu to %lu.",
+        len, first_port, first_port + len - 1);
     for (i = 0; i < len; ++i) {
         tis[i].sa.svm_family = AF_VSOCK;
         tis[i].sa.svm_cid = V4V_DOMID_ANY;
