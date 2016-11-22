@@ -1,7 +1,7 @@
 COMMON_INC = -I../common/include
 COMMON_LIB = 
 
-COMMON_INCLUDES = ../common/includes/utils.h
+COMMON_INCLUDES = ../common/includes/utils.h ../common/includes/vsock-helpers.h
 
 bin_PROGRAMS = socket-ops
 
