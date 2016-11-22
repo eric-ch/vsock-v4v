@@ -20,6 +20,7 @@
  * Global ring list.
  */
 struct list_head v4v_rings;
+rwlock_t v4v_rings_lock;
 
 /*
  * Helpers for ring management with the hypervisor.
@@ -114,7 +115,9 @@ struct v4v_ring_hnd *v4v_ring_handle_alloc(unsigned int domain, unsigned int por
 	}
 
 	spin_lock_init(&h->ring_lock);
+	write_lock(&v4v_rings_lock);
 	list_add_tail(&h->l, &v4v_rings);
+	write_unlock(&v4v_rings_lock);
 
 	DPRINTK("ring(dom%u:%u): %zuB, estimated %zu pages.",
 		domain, port, len, npages);
@@ -331,7 +334,7 @@ static void v4v_handle_rx(void)
 	bool notify = false;
 	int rc;
 
-	/* TODO: v4v_rings should have a rwlock_t. */
+	read_lock(&v4v_rings_lock);
 	list_for_each_entry_safe(r, tmp, &v4v_rings, l) {
 		//DPRINTK("Rx for ring { dom%u:%u -> %u }...",
 		//	r->ring->id.addr.domain, r->ring->id.addr.port,
@@ -360,12 +363,7 @@ static void v4v_handle_rx(void)
 		//		r->ring->id.addr.domain, r->ring->id.addr.port,
 		//		r->ring->id.partner);
 	}
-	/* TODO: Tell Xen we changed the ring? */
-	//if (notify) {
-	//	//DPRINTK("Notifying Xen...");
-	//	if (HYPERVISOR_v4v_op(V4VOP_notify, NULL, NULL, NULL, 0, 0))
-	//		pr_warn("Failed to notify hypervisor.\n");
-	//}
+	read_unlock(&v4v_rings_lock);
 }
 
 static void v4v_handle_event(unsigned long data)
@@ -398,6 +396,7 @@ int v4v_core_init(void)
 
 	//DPRINTK("");
 	INIT_LIST_HEAD(&v4v_rings);
+	rwlock_init(&v4v_rings_lock);
 
 	rc = bind_virq_to_irqhandler(VIRQ_V4V, 0, v4v_interrupt_handler, 0,
 		"v4v", NULL);
