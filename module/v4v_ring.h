@@ -36,8 +36,9 @@ void v4v_core_cleanup(void);
  * Debugging stuffs...
  */
 #define DPRINTK(fmt, ...) \
-	pr_info(DTAG":%s:%d: " fmt "\n", __func__, __LINE__, ##__VA_ARGS__)
+	pr_devel(DTAG":%s:%d: " fmt "\n", __func__, __LINE__, ##__VA_ARGS__)
 
+#ifdef DEBUG
 static inline void dprinthex(unsigned char *b, size_t len)
 {
 	size_t i;
@@ -45,18 +46,27 @@ static inline void dprinthex(unsigned char *b, size_t len)
 	if (!b || !len)
 		return;
 
-	printk(KERN_INFO "%02x", b[0]);
+	if (!printk_ratelimit())
+		return;
+
+	pr_devel("%02x", b[0]);
 	for (i = 1; i < len; ++i) {
 		if (!(i % 16)) {
-			printk(KERN_CONT "\n");
-			printk(KERN_INFO "%02x", b[i]);
+			pr_cont("\n");
+			pr_devel("%02x", b[i]);
 		} else if (!(i % 8)) {
-			printk(KERN_CONT "  %02x", b[i]);
+			pr_cont("  %02x", b[i]);
 		} else
-			printk(KERN_CONT " %02x", b[i]);
+			pr_cont(" %02x", b[i]);
 	}
-	printk(KERN_CONT "\n");
+	pr_cont("\n");
 }
+#else /* !DEBUG*/
+static inline void dprinthex(unsigned char *b, size_t len)
+{
+	return;
+}
+#endif
 
 static inline void dprint_ring(const struct v4v_ring_hnd *h)
 {
@@ -64,7 +74,7 @@ static inline void dprint_ring(const struct v4v_ring_hnd *h)
 	size_t rx = r->rx_ptr;
 	size_t tx = r->tx_ptr;
 
-	pr_info("ring: { .id=dom%u:%u->%u .len=%u .rx=%zu .tx=%zu }\n",
+	pr_devel("ring: { .id=dom%u:%u->%u .len=%u .rx=%zu .tx=%zu }\n",
 		r->id.addr.domain, r->id.addr.port, r->id.partner,
 		r->len, rx, tx);
 

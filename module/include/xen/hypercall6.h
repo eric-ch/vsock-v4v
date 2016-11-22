@@ -32,14 +32,14 @@
 
 #ifdef CONFIG_X86_32
 #define __HYPERCALL_6PARAM	__HYPERCALL_5PARAM
-#define _hypercall6(type, name, a1, a2, a3, a4, a5, a6)                 \
+#define _hypercall6(type, name, a1, a2, a3, a4, a5, a6)			\
 ({									\
 	__HYPERCALL_DECLS;						\
 	__HYPERCALL_6ARG(a1, a2, a3, a4, a5, a6);			\
-	asm volatile (                                                  \
-                        "push %%ebp; mov %%eax, %%ebp;"                 \
-                        __HYPERCALL ";"					\
-                        "pop %%ebp"                                     \
+	asm volatile (							\
+			"push %%ebp; mov %%eax, %%ebp;"			\
+			__HYPERCALL ";"					\
+			"pop %%ebp"					\
 		      : __HYPERCALL_6PARAM				\
 		      : __HYPERCALL_ENTRY(name), "0" ((long) (a6))      \
 		      : __HYPERCALL_CLOBBER6);				\
@@ -47,13 +47,13 @@
 })
 #else
 #define __HYPERCALL_6PARAM      __HYPERCALL_5PARAM, "+r" (__arg6)
-#define _hypercall6(type, name, a1, a2, a3, a4, a5, a6)                 \
+#define _hypercall6(type, name, a1, a2, a3, a4, a5, a6)			\
 ({									\
 	__HYPERCALL_DECLS;						\
 	__HYPERCALL_6ARG(a1, a2, a3, a4, a5, a6);			\
 	asm volatile (__HYPERCALL ";"					\
 		      : __HYPERCALL_6PARAM				\
-		      : __HYPERCALL_ENTRY(name)                         \
+		      : __HYPERCALL_ENTRY(name)				\
 		      : __HYPERCALL_CLOBBER6);				\
 	(type)__res;							\
 })

@@ -117,29 +117,27 @@ static int v4v_transport_dgram_bind(struct vsock_sock *vsk,
 		struct sockaddr_vm *addr)
 {
 	struct v4v_transport *t = v4v_trans(vsk);
-        struct sockaddr_vm addr_auto = {
-            .svm_family = AF_VSOCK,
-            .svm_cid = V4V_DOMID_ANY,
-            .svm_port = 0,
-            .svm_zero = { 0 },
-        };
+	struct sockaddr_vm addr_auto = {
+		.svm_family = AF_VSOCK,
+		.svm_cid = V4V_DOMID_ANY,
+		.svm_port = 0,
+		.svm_zero = { 0 },
+	};
 	size_t ring_len;
 	int rc;
 
-        /* TODO: That could be avoided and left up to VSOCK if V4V could agree
-         *       on the _ANY values. */
-	//DPRINTK("addr(%p): { .family=%u, .cid=%u .port=%u }",
-	//	addr, addr->svm_family, addr->svm_cid, addr->svm_port);
+	/* TODO: That could be avoided and left up to VSOCK if V4V could agree
+	 *       on the _ANY values. */
 	if (addr->svm_cid == VMADDR_CID_ANY ||
 		addr->svm_port == VMADDR_PORT_ANY)
 		memcpy(addr, &addr_auto, sizeof (addr_auto));
-	//DPRINTK("addr(%p): { dom%u:%u }", addr, addr->svm_cid, addr->svm_port);
 
 	/* Make sure local_addr is bound. */
 	memcpy(&vsk->local_addr, addr, sizeof (*addr));
 
+	/* TODO: Ring size should have a default value... Configurable through
+	 *       sysfs would be perfect. */
 	ring_len = 4096;
-	//ring_len = V4V_ROUNDUP(1) + V4V_ROUNDUP(1) + sizeof (struct v4v_ring_msghdr);
 	t->ring = v4v_ring_handle_alloc(addr->svm_cid, addr->svm_port, ring_len);
 	if (IS_ERR(t->ring)) {
 		rc = PTR_ERR(t->ring);
@@ -218,7 +216,7 @@ static int v4v_transport_dgram_dequeue(struct vsock_sock *vsk,
 {
 	int rc = 0;
 	struct sk_buff *skb;
-        struct v4v_ring_msghdr *mh;
+	struct v4v_ring_msghdr *mh;
 	size_t msg_len;
 
 	skb = skb_recv_datagram(&vsk->sk, flags, flags & MSG_DONTWAIT, &rc);
@@ -294,7 +292,7 @@ static u64 v4v_transport_stream_rcvhiwat(struct vsock_sock *vsk)
 {
 	return -ENOTSUP;
 	/* TODO: Return high-watermark... probably something to frob around
-	 * with. Likely the size of a V4V header packet. */
+	   with. */
 }
 
 static bool v4v_transport_stream_is_active(struct vsock_sock *vsk)
@@ -304,7 +302,6 @@ static bool v4v_transport_stream_is_active(struct vsock_sock *vsk)
 
 static bool v4v_transport_stream_allow(u32 cid, u32 port)
 {
-	DPRINTK("cid:%u, port:%u", cid, port);
 	/* TODO: Pre-filtering can be done in here. */
 	return true;
 }
@@ -421,36 +418,30 @@ static void v4v_transport_set_buffer_size(struct vsock_sock *vsk, u64 val)
 
 static void v4v_transport_set_min_buffer_size(struct vsock_sock *vsk, u64 val)
 {
-	/* TODO: Give V4V ring size. */
 }
 
 static void v4v_transport_set_max_buffer_size(struct vsock_sock *vsk, u64 val)
 {
-	/* TODO: Give V4V ring size as well. */
 }
 
 static u64 v4v_transport_get_buffer_size(struct vsock_sock *vsk)
 {
-	/* TODO: Give V4V ring size again! */
 	return 0ULL;
 }
 
 static u64 v4v_transport_get_min_buffer_size(struct vsock_sock *vsk)
 {
-	/* TODO: Give V4V ring size again! */
 	return 0ULL;
 }
 
 static u64 v4v_transport_get_max_buffer_size(struct vsock_sock *vsk)
 {
-	/* TODO: Give V4V ring size again! */
 	return 0ULL;
 }
 
 static u32 v4v_transport_get_local_cid(void)
 {
-	/* TODO: Know our domid, V4V will have it remembered, that might be
-	 * harder in this case, but we will only handle dom0 with this test. */
+	/* TODO: That might actually require svm_cid format instead of V4V. */
 	return V4V_DOMID_ANY;
 }
 
@@ -504,7 +495,6 @@ static int __init v4v_transport_init(void)
 {
 	int rc;
 
-	DPRINTK("");
 	rc = vsock_core_init(&v4v_transport);
 	if (rc) {
 		pr_err("vsock_core_init() failed (%d).\n", rc);
@@ -516,6 +506,7 @@ static int __init v4v_transport_init(void)
 		vsock_core_exit();
 		return rc;
 	}
+	pr_info("vsock_v4v_transport registered.\n");
 
 	return 0;
 }
@@ -523,9 +514,9 @@ module_init(v4v_transport_init);
 
 static void __exit v4v_transport_exit(void)
 {
-	DPRINTK("");
 	/* TODO: Flush sockets... */
 
+	pr_info("vsock_v4v_transport unregistered.\n");
 	v4v_core_cleanup();
 	vsock_core_exit();
 	return;

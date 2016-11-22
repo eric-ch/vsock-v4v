@@ -259,14 +259,14 @@ static struct sk_buff *v4v_ring_recv_skb(struct v4v_ring_hnd *ring)
 	if (!skb)
 		return ERR_PTR(-ENOMEM);
 
-	/* TODO: REMOVE. Tasklet is only scheduled once, even SMP.
-	 * v4v_ring_recv() will affect rx_ptr, so take the lock. */
+	/* TODO: REMOVE. Tasklet is only scheduled once, even on SMP. */
 	spin_lock(&ring->ring_lock);
 	/* Fetch message header. */
 	v4v_ring_recv(ring, skb_put(skb, sizeof (*mh)), sizeof (*mh));
 
 	mh = (void*)skb->data;
 	msg_len = mh->len - sizeof (*mh);
+
 	//DPRINTK("packet from dom%u:%u, %#08x payload:%zuB (packet:%uB, round-up:%uB).",
 	//	mh->source.domain, mh->source.port, mh->protocol, msg_len, mh->len, V4V_ROUNDUP(mh->len));
 	if (msg_len > v4v_ring_has_data(ring)) {
@@ -275,9 +275,9 @@ static struct sk_buff *v4v_ring_recv_skb(struct v4v_ring_hnd *ring)
 		goto out;
 	}
 
-	if (msg_len) {
+	/* XXX: (msg_len == 0) should not happen, but nothing prevents it. */
+	if (unlikely(msg_len)) {
 		/* Fetch message content, if any. */
-		/* XXX: (msg_len == 0) should not happen, but nothing prevents it. */
 		if (pskb_expand_head(skb, 0, msg_len, GFP_ATOMIC)) {
 			DPRINTK("Could not allocate the skb to copy the message.");
 			rc = ENOMEM;
@@ -336,14 +336,9 @@ static void v4v_handle_rx(void)
 
 	read_lock(&v4v_rings_lock);
 	list_for_each_entry_safe(r, tmp, &v4v_rings, l) {
-		//DPRINTK("Rx for ring { dom%u:%u -> %u }...",
-		//	r->ring->id.addr.domain, r->ring->id.addr.port,
-		//	r->ring->id.partner);
-		//dprint_ring(r);
 		while (v4v_ring_has_data(r) >= sizeof (struct v4v_ring_msghdr)) {
 			struct sk_buff *skb;
 
-			/* TODO: Makes v4v_ring_has_data() redundant. */
 			skb = v4v_ring_recv_skb(r);
 			if (IS_ERR(skb)) {
 				pr_warn("Failed to retrieve packet "
@@ -368,7 +363,6 @@ static void v4v_handle_rx(void)
 
 static void v4v_handle_event(unsigned long data)
 {
-	//DPRINTK("Tasklet scheduled.");
 	v4v_handle_rx();
 }
 DECLARE_TASKLET(v4v_event, v4v_handle_event, 0);
@@ -380,7 +374,6 @@ static irqreturn_t v4v_interrupt_handler(int irq, void *devid)
 {
 	(void) irq;
 	(void) devid;
-	//DPRINTK("VIRQ received.");
 	/* Defer to bottom-half tasklet. */
 	tasklet_schedule(&v4v_event);
 	return IRQ_HANDLED;
@@ -394,7 +387,6 @@ int v4v_core_init(void)
 {
 	int rc;
 
-	//DPRINTK("");
 	INIT_LIST_HEAD(&v4v_rings);
 	rwlock_init(&v4v_rings_lock);
 
@@ -409,7 +401,6 @@ int v4v_core_init(void)
 
 void v4v_core_cleanup(void)
 {
-	//DPRINTK("");
 	unbind_from_irqhandler(v4v_irq, NULL);
 }
 
